@@ -1,0 +1,106 @@
+@echo off
+REM Tokit Omnicook Recipe Importer - Windows Setup Script
+REM This script automates the installation process for Windows users
+
+echo ========================================
+echo Tokit Omnicook Recipe Importer
+echo Windows Setup Script
+echo ========================================
+echo.
+
+REM Check if Python is installed
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Python is not installed or not in PATH!
+    echo.
+    echo Please install Python 3.8 or higher from:
+    echo https://www.python.org/downloads/
+    echo.
+    echo Make sure to check "Add Python to PATH" during installation.
+    pause
+    exit /b 1
+)
+
+echo [1/5] Python found:
+python --version
+echo.
+
+REM Check if pip is available
+pip --version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: pip is not installed!
+    echo Please reinstall Python with pip enabled.
+    pause
+    exit /b 1
+)
+
+echo [2/5] Creating virtual environment...
+python -m venv venv
+if errorlevel 1 (
+    echo ERROR: Failed to create virtual environment!
+    pause
+    exit /b 1
+)
+echo Virtual environment created successfully.
+echo.
+
+echo [3/5] Activating virtual environment...
+call venv\Scripts\activate
+echo.
+
+echo [4/5] Installing Python dependencies...
+echo This may take a few minutes...
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+if errorlevel 1 (
+    echo ERROR: Failed to install dependencies!
+    pause
+    exit /b 1
+)
+echo Dependencies installed successfully.
+echo.
+
+echo [5/5] Installing Playwright browser...
+echo This will download Chromium (about 150-200 MB)...
+playwright install chromium
+if errorlevel 1 (
+    echo WARNING: Playwright installation may have failed.
+    echo You can try again later with: playwright install chromium
+)
+echo.
+
+REM Create .env file if it doesn't exist
+if not exist ".env" (
+    echo Creating .env configuration file...
+    copy .env.example .env >nul
+    echo.
+    echo IMPORTANT: Edit .env file with your credentials:
+    echo   - ANTHROPIC_API_KEY (required)
+    echo   - COOKNJOY_EMAIL and COOKNJOY_PASSWORD (required)
+    echo   - NYTIMES_EMAIL and NYTIMES_PASSWORD (optional)
+    echo.
+    echo Opening .env file in Notepad...
+    timeout /t 2 >nul
+    notepad .env
+)
+
+echo.
+echo ========================================
+echo Setup Complete!
+echo ========================================
+echo.
+echo Next steps:
+echo   1. Make sure your .env file is configured with your API keys
+echo   2. Test the installation:
+echo      python main.py --help
+echo.
+echo Quick start:
+echo   - Import a recipe:
+echo     python main.py import-recipe --url "RECIPE_URL"
+echo.
+echo   - Or use the convenience script:
+echo     import-recipe.bat "RECIPE_URL"
+echo.
+echo For detailed instructions, see WINDOWS_INSTALL.md
+echo.
+pause

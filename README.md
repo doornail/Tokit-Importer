@@ -18,6 +18,17 @@ A tool to import recipes from various sources and automatically convert them for
 
 ## Installation
 
+### Windows Users
+
+**See [WINDOWS_INSTALL.md](WINDOWS_INSTALL.md) for detailed Windows installation instructions with screenshots and troubleshooting.**
+
+Quick setup for Windows:
+```cmd
+setup-windows.bat
+```
+
+### Linux/Mac Users
+
 1. Clone the repository:
 ```bash
 git clone <repository-url>
