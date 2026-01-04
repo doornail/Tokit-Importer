@@ -13,7 +13,7 @@ class Config:
 
     # Anthropic
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
-    CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20241022")
+    CLAUDE_MODEL: str = os.getenv("CLAUDE_MODEL", "claude-opus-4-5-20251101")
 
     # NYTimes
     NYTIMES_EMAIL: Optional[str] = os.getenv("NYTIMES_EMAIL")

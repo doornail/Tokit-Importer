@@ -63,18 +63,23 @@ class OmnicookIngredient(BaseModel):
 class OmnicookStepParameters(BaseModel):
     """Parameters for a Tokit Omnicook cooking step."""
 
-    duration_minutes: int = Field(default=0, ge=0, description="Duration in minutes")
-    duration_seconds: int = Field(default=0, ge=0, lt=60, description="Duration in seconds (0-59)")
-    temperature_on: bool = Field(default=False, description="Whether heating element is on")
-    temperature_celsius: int = Field(default=0, ge=0, le=120, description="Temperature in Celsius (0-120)")
-    speed: float = Field(default=0, ge=0, le=10, description="Blade speed 0-10 in 0.5 increments")
+    mode: str = Field(default="Manual", description="Cooking mode: Manual, Stewing, Steam, Turbo, Mincing, Grinding, Chopping, Kneading, Weighing, or *NOT TOKIT*")
+    temperature_celsius: Optional[int] = Field(default=None, ge=35, le=180, description="Temperature in Celsius (35-180°C), None if not applicable")
+    speed: Optional[float] = Field(default=None, ge=0, le=10, description="Blade speed 0-10, None if not applicable")
+    speed_reverse: bool = Field(default=False, description="True if using reverse speed for stirring")
+    time_minutes: int = Field(default=0, ge=0, le=99, description="Duration in minutes (max 99 per step)")
+    notes: Optional[str] = Field(default=None, description="Additional notes or instructions for this step")
 
     def __init__(self, **data):
-        """Validate that speed is in 0.5 increments."""
+        """Validate speed and parameters."""
         super().__init__(**data)
-        # Validate speed is in 0.5 increments
-        if self.speed % 0.5 != 0:
+        # Validate speed is in 0.5 increments if provided
+        if self.speed is not None and self.speed % 0.5 != 0:
             raise ValueError(f"Speed must be in 0.5 increments, got {self.speed}")
+        # Warn if blending hot liquids at high speed
+        if self.temperature_celsius and self.temperature_celsius > 60 and self.speed and self.speed > 4:
+            import warnings
+            warnings.warn("Warning: High speed (>4) with temperature >60°C is not recommended")
 
 
 class OmnicookStep(BaseModel):
@@ -85,29 +90,30 @@ class OmnicookStep(BaseModel):
     parameters: OmnicookStepParameters = Field(description="Cooking parameters for this step")
 
     def format_for_display(self) -> str:
-        """Format step for display."""
+        """Format step for table display."""
         params = self.parameters
-        parts = [f"Step {self.step_number}: {self.description}"]
 
-        # Duration
-        if params.duration_minutes > 0 or params.duration_seconds > 0:
-            time_str = f"{params.duration_minutes}:{params.duration_seconds:02d}"
-            parts.append(f"Time: {time_str}")
+        # Mode
+        mode = params.mode
 
         # Temperature
-        if params.temperature_on:
-            parts.append(f"Temp: {params.temperature_celsius}°C")
-        else:
-            parts.append("Temp: OFF")
+        temp = f"{params.temperature_celsius}°C" if params.temperature_celsius else "—"
 
-        # Speed
-        if params.speed > 0:
-            direction = "reverse (stir)" if params.speed < 0 else "forward (chop)"
-            parts.append(f"Speed: {abs(params.speed)} {direction}")
+        # Speed with reverse notation
+        if params.speed is not None:
+            speed_str = f"{params.speed}"
+            if params.speed_reverse:
+                speed_str += " (reverse)"
         else:
-            parts.append("Speed: 0 (no mixing)")
+            speed_str = "—"
 
-        return " | ".join(parts)
+        # Time
+        time_str = f"{params.time_minutes} min" if params.time_minutes > 0 else "—"
+
+        # Notes
+        notes = params.notes or ""
+
+        return f"| {self.step_number} | {self.description} | {mode} | {temp} | {speed_str} | {time_str} | {notes} |"
 
 
 class OmnicookRecipe(BaseModel):

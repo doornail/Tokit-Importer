@@ -305,41 +305,45 @@ def _display_recipe(recipe: OmnicookRecipe):
             else:
                 console.print(f"  • {ing}")
 
-    # Steps with detailed parameters
+    # Steps with detailed parameters in table format
     if recipe.steps:
-        console.print("\n[bold yellow]Tokit Omnicook Steps:[/bold yellow]")
+        console.print("\n[bold yellow]Tokit Omnicook Steps:[/bold yellow]\n")
+
+        # Print table header
+        console.print("| [bold]Step[/bold] | [bold]Action[/bold] | [bold]Mode[/bold] | [bold]Temp[/bold] | [bold]Speed[/bold] | [bold]Time[/bold] | [bold]Notes[/bold] |")
+        console.print("|------|--------|------|------|-------|------|-------|")
+
         for step in recipe.steps:
             # Handle both old string format and new OmnicookStep objects
             if hasattr(step, 'parameters'):
                 params = step.parameters
-                console.print(f"\n  [bold cyan]Step {step.step_number}:[/bold cyan] {step.description}")
 
-                # Display parameters in a compact format
-                param_parts = []
-
-                # Time
-                if params.duration_minutes > 0 or params.duration_seconds > 0:
-                    time_str = f"{params.duration_minutes}:{params.duration_seconds:02d}"
-                    param_parts.append(f"⏱️  {time_str}")
+                # Format each column
+                step_num = str(step.step_number)
+                action = step.description[:30] + "..." if len(step.description) > 30 else step.description
+                mode = params.mode if hasattr(params, 'mode') else "Manual"
 
                 # Temperature
-                if params.temperature_on:
-                    param_parts.append(f"🌡️  {params.temperature_celsius}°C")
-                else:
-                    param_parts.append("🌡️  OFF")
+                temp = f"{params.temperature_celsius}°C" if params.temperature_celsius else "—"
 
-                # Speed
-                if params.speed > 0:
-                    param_parts.append(f"🔄 {params.speed} (chop/blend)")
-                elif params.speed < 0:
-                    param_parts.append(f"🔄 {abs(params.speed)} reverse (stir)")
+                # Speed with reverse notation
+                if params.speed is not None:
+                    speed_str = str(params.speed)
+                    if hasattr(params, 'speed_reverse') and params.speed_reverse:
+                        speed_str += " (rev)"
                 else:
-                    param_parts.append("🔄 0 (no mixing)")
+                    speed_str = "—"
 
-                console.print(f"     [dim]{' | '.join(param_parts)}[/dim]")
+                # Time
+                time_str = f"{params.time_minutes}m" if hasattr(params, 'time_minutes') and params.time_minutes > 0 else "—"
+
+                # Notes
+                notes = params.notes[:25] + "..." if params.notes and len(params.notes) > 25 else (params.notes or "")
+
+                console.print(f"| {step_num} | {action} | {mode} | {temp} | {speed_str} | {time_str} | {notes} |")
             else:
                 # Old format fallback
-                console.print(f"  [bold]{step.step_number if hasattr(step, 'step_number') else '?'}.[/bold] {step}")
+                console.print(f"| {step.step_number if hasattr(step, 'step_number') else '?'} | {step} | — | — | — | — | — |")
 
     # Notes
     if recipe.notes:

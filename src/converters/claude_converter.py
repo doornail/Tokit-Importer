@@ -62,68 +62,59 @@ Instructions:
 {f'Notes: {recipe.notes}' if recipe.notes else ''}
 """
 
-        prompt = f"""You are a culinary expert assistant specialized in converting recipes for the Tokit Omnicook, a smart cooking appliance similar to Thermomix with precise control over temperature, timing, and blade speed.
+        prompt = f"""You are a recipe conversion assistant specialized in adapting recipes for the Tokit Omnicook smart cooking machine.
 
-TOKIT OMNICOOK CAPABILITIES:
-- Temperature control: 0-120°C with heating element on/off
-- Blade speed: 0-10 (in 0.5 increments)
-  * Speed > 0 (forward/positive): CHOPPING, BLENDING, MIXING vigorously
-  * Speed < 0 (reverse/negative): STIRRING gently without chopping
-  * Speed 0: No blade movement (heating only, resting, etc.)
-- Precise timing: Minutes and seconds
-- Can heat, mix, chop, steam, and blend all in one bowl
+## About the Tokit Omnicook
+
+The Tokit Omnicook is a multifunctional cooking machine with the following specifications:
+
+**Capabilities:**
+- Temperature range: 35°C to 180°C (95°F to 356°F)
+- Speed settings: 0-10 forward, 0-10 reverse (use reverse for gentle stirring while cooking)
+- Mixing bowl capacity: 2.2 liters
+- Built-in scale for weighing ingredients
+- Timer: up to 99 minutes per step
+
+**Available Modes:**
+- Manual mode (set custom time, temp, speed)
+- Stewing mode (for simmering, braising)
+- Steam cooking mode (with simmering basket accessory)
+- Turbo mode (high-speed blending/chopping)
+- Mincing mode
+- Grinding mode
+- Chopping mode
+- Kneading mode
+- Weighing mode
+
+**Key Limitations:**
+- Cannot blend at high speed when contents are above 60°C (safety risk)
+- Lid must remain on during cooking (measuring cup can be removed for steam release)
+- Maximum 99 minutes per cooking step
+- Not suitable for: deep frying, baking, boiling large quantities of pasta/noodles, grilling
+- Blade is always present and spinning interferes with some cooking methods
+
+**Best Practices:**
+- Use reverse speed (1-2) when cooking with heat to gently stir without aggressive mixing
+- Speed 0 = no stirring (heating only)
+- For sautéing: 120-140°C, speed 1-2 reverse
+- For simmering: 100°C, speed 1 reverse
+- For blending hot liquids: cool below 60°C first, or use low speed (3-4) with brief pulses
+- For chopping/mincing: no heat, speed 5-10 depending on desired texture
 
 {recipe_text}
 
-CONVERSION REQUIREMENTS:
+## Your Task
 
-1. **INGREDIENTS** - Format as structured objects:
-   - "name": ingredient name (e.g., "water", "onion", "flour")
-   - "quantity": amount with unit (e.g., "200g", "2 cups", "1 tsp")
-   - Use metric measurements when possible
-   - Be specific and clear
+Convert the recipe above into Tokit Omnicook format.
 
-2. **STEPS** - Each step MUST have:
-   - "step_number": Sequential number (1, 2, 3...)
-   - "description": Clear instruction for what to do
-   - "parameters": Object containing ALL of these fields:
-     * "duration_minutes": Integer 0+ (how many minutes for this step)
-     * "duration_seconds": Integer 0-59 (additional seconds)
-     * "temperature_on": Boolean (true = heating element ON, false = OFF)
-     * "temperature_celsius": Integer 0-120 (target temperature, 0 if heating is off)
-     * "speed": Float 0-10 in 0.5 increments (blade speed and direction)
-       - Use positive speeds (0.5-10) for chopping, blending, mixing
-       - Use NEGATIVE speeds (-0.5 to -10) for gentle stirring without chopping
-       - Use 0 for no blade movement (pure heating, resting, etc.)
-
-SPEED GUIDELINES:
-- Stirring/mixing liquids gently: -1 to -3 (NEGATIVE = reverse)
-- Sautéing (stir while heating): -2 to -4
-- Simmering soups: -1 to -2
-- Chopping vegetables: 3 to 5
-- Blending smooth: 6 to 8
-- Grinding/pulverizing: 9 to 10
-- Just heating with no movement: 0
-
-EXAMPLE STEP:
-{{
-  "step_number": 1,
-  "description": "Sauté onions until translucent",
-  "parameters": {{
-    "duration_minutes": 5,
-    "duration_seconds": 0,
-    "temperature_on": true,
-    "temperature_celsius": 100,
-    "speed": -3.0
-  }}
-}}
-
-CRITICAL:
-- Every step MUST have ALL parameter fields
-- Speed must be in 0.5 increments (0, 0.5, 1, 1.5, 2, etc.)
-- Use NEGATIVE speed for stirring (reverse blade)
-- Use POSITIVE speed for chopping/blending
-- Break down manual steps into Omnicook-automated steps with specific parameters
+**CRITICAL RULES:**
+- Create a NEW step every time temperature OR speed changes
+- Mark steps done outside the Tokit as mode "*NOT TOKIT*"
+- If a technique cannot be replicated in the Tokit (e.g., charring, deep frying, baking), note it must be done externally or suggest an alternative adaptation
+- Be realistic about what the Tokit can and cannot do
+- Use reverse speed for gentle stirring when cooking
+- Never exceed 99 minutes per step
+- Never use high speed (>4) when temperature is above 60°C
 
 Please respond with a JSON object in this EXACT format:
 {{
@@ -138,13 +129,26 @@ Please respond with a JSON object in this EXACT format:
   "steps": [
     {{
       "step_number": 1,
-      "description": "Step instruction",
+      "description": "Action to perform (e.g., 'Chop onions', 'Sauté garlic')",
       "parameters": {{
-        "duration_minutes": 0,
-        "duration_seconds": 30,
-        "temperature_on": false,
-        "temperature_celsius": 0,
-        "speed": 5.0
+        "mode": "Manual",
+        "temperature_celsius": 130,
+        "speed": 1.0,
+        "speed_reverse": true,
+        "time_minutes": 5,
+        "notes": "Add what ingredients or any special instructions"
+      }}
+    }},
+    {{
+      "step_number": 2,
+      "description": "Char peppers",
+      "parameters": {{
+        "mode": "*NOT TOKIT*",
+        "temperature_celsius": null,
+        "speed": null,
+        "speed_reverse": false,
+        "time_minutes": 0,
+        "notes": "Char peppers on stovetop or under broiler until blackened"
       }}
     }},
     ...
@@ -152,9 +156,17 @@ Please respond with a JSON object in this EXACT format:
   "total_time_minutes": 45,
   "difficulty": "Medium",
   "category": "Main Course",
-  "source": "{recipe.source_url if recipe.source_url else null}",
+  "source": "{recipe.source_url if recipe.source_url else None}",
   "notes": "Any additional tips"
 }}
+
+**Step Parameters Explanation:**
+- `mode`: One of: Manual, Stewing, Steam, Turbo, Mincing, Grinding, Chopping, Kneading, Weighing, or "*NOT TOKIT*"
+- `temperature_celsius`: 35-180, or null if not applicable
+- `speed`: 0-10 in 0.5 increments, or null if not applicable
+- `speed_reverse`: true for gentle stirring (reverse), false for chopping/blending (forward)
+- `time_minutes`: 0-99 minutes per step
+- `notes`: What to add or special instructions
 
 Respond ONLY with the JSON object, no additional text."""
 
