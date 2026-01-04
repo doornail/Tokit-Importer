@@ -77,14 +77,17 @@ if exist ".env" (
     echo Existing .env file found!
     echo ========================================
     echo.
-    echo You already have a .env configuration file.
+    echo You already have a .env configuration file with your credentials.
     echo.
-    set /p OVERWRITE="Do you want to keep your existing .env file? (Y/n): "
+    set /p OVERWRITE="Do you want to OVERWRITE it with a blank template? (y/N): "
 
-    if /i "!OVERWRITE!"=="n" (
+    REM Default to NO if user just presses Enter
+    if "!OVERWRITE!"=="" set OVERWRITE=n
+
+    if /i "!OVERWRITE!"=="y" (
         echo.
-        echo Creating new .env file from template...
-        copy .env.example .env >nul
+        echo WARNING: Overwriting existing .env file with blank template...
+        copy /Y .env.example .env >nul
         echo.
         echo IMPORTANT: Edit .env file with your credentials:
         echo   - ANTHROPIC_API_KEY (required)
@@ -96,22 +99,28 @@ if exist ".env" (
         notepad .env
     ) else (
         echo.
-        echo Keeping existing .env file.
-        echo If you need to update it, run: notepad .env
+        echo [KEEPING EXISTING .env FILE]
+        echo Your credentials are safe and unchanged.
+        echo.
+        echo To edit your .env file manually, run: notepad .env
     )
-) else (
-    echo Creating .env configuration file...
-    copy .env.example .env >nul
-    echo.
-    echo IMPORTANT: Edit .env file with your credentials:
-    echo   - ANTHROPIC_API_KEY (required)
-    echo   - COOKNJOY_EMAIL and COOKNJOY_PASSWORD (required)
-    echo   - NYTIMES_EMAIL and NYTIMES_PASSWORD (optional)
-    echo.
-    echo Opening .env file in Notepad...
-    timeout /t 2 >nul
-    notepad .env
+    goto :skip_env_creation
 )
+
+REM Only reaches here if .env does NOT exist
+echo Creating new .env configuration file...
+copy .env.example .env >nul
+echo.
+echo IMPORTANT: Edit .env file with your credentials:
+echo   - ANTHROPIC_API_KEY (required)
+echo   - COOKNJOY_EMAIL and COOKNJOY_PASSWORD (required)
+echo   - NYTIMES_EMAIL and NYTIMES_PASSWORD (optional)
+echo.
+echo Opening .env file in Notepad...
+timeout /t 2 >nul
+notepad .env
+
+:skip_env_creation
 
 echo.
 echo ========================================
