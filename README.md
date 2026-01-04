@@ -75,20 +75,29 @@ COOKNJOY_PASSWORD=your_password
 Import a NYTimes recipe by URL:
 
 ```bash
-python main.py --url "https://cooking.nytimes.com/recipes/..."
+python main.py import-recipe --url "https://cooking.nytimes.com/recipes/..."
 ```
 
 ### Advanced Options
 
 ```bash
 # Dry run (convert but don't upload)
-python main.py --url "URL" --dry-run
+python main.py import-recipe --url "URL" --dry-run
 
 # Specify output directory for converted recipes
-python main.py --url "URL" --output ./recipes
+python main.py import-recipe --url "URL" --output ./recipes
+
+# Skip upload to Cooknjoy (only scrape and convert)
+python main.py import-recipe --url "URL" --no-upload
 
 # Batch import from file
-python main.py --batch urls.txt
+python main.py batch --file urls.txt
+
+# Batch import with dry run
+python main.py batch --file urls.txt --dry-run
+
+# View a saved recipe
+python main.py show recipes/Recipe_Name.json
 ```
 
 ## Project Structure
