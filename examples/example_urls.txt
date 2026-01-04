@@ -1,0 +1,8 @@
+# Example NYTimes Cooking URLs for batch import
+# Lines starting with # are comments and will be ignored
+
+# Example recipes (replace with actual URLs)
+# https://cooking.nytimes.com/recipes/1234-example-recipe
+# https://cooking.nytimes.com/recipes/5678-another-recipe
+
+# Add your recipe URLs here, one per line
