@@ -127,12 +127,12 @@ echo ========================================
 echo Setup Complete!
 echo ========================================
 echo.
-echo Next steps:
-echo   1. Make sure your .env file is configured with your API keys
-echo   2. Test the installation:
-echo      python main.py --help
+echo Your virtual environment is ready!
 echo.
 echo Quick start:
+echo   - Test the installation:
+echo     python main.py --help
+echo.
 echo   - Import a recipe:
 echo     python main.py import-recipe --url "RECIPE_URL"
 echo.
@@ -141,4 +141,11 @@ echo     import-recipe.bat "RECIPE_URL"
 echo.
 echo For detailed instructions, see WINDOWS_INSTALL.md
 echo.
-pause
+echo ========================================
+echo Opening new command prompt with virtual environment activated...
+echo ========================================
+echo.
+
+REM Launch new command prompt with venv activated
+REM This keeps you in the virtual environment after setup
+cmd /k "venv\Scripts\activate && echo. && echo Virtual environment activated! You can now run: python main.py --help && echo."
