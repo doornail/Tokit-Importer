@@ -12,7 +12,11 @@ console = Console()
 def setup_logger(name: str, level: Optional[str] = None) -> logging.Logger:
     """Setup a logger with rich formatting."""
     if level is None:
-        level = "DEBUG" if __import__('src.config').config.DEBUG else "INFO"
+        try:
+            from .config import config
+            level = "DEBUG" if config.DEBUG else "INFO"
+        except ImportError:
+            level = "INFO"
 
     # Create logger
     logger = logging.getLogger(name)

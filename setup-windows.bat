@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 REM Tokit Omnicook Recipe Importer - Windows Setup Script
 REM This script automates the installation process for Windows users
 
@@ -69,8 +70,36 @@ if errorlevel 1 (
 )
 echo.
 
-REM Create .env file if it doesn't exist
-if not exist ".env" (
+REM Handle .env file
+if exist ".env" (
+    echo.
+    echo ========================================
+    echo Existing .env file found!
+    echo ========================================
+    echo.
+    echo You already have a .env configuration file.
+    echo.
+    set /p OVERWRITE="Do you want to keep your existing .env file? (Y/n): "
+
+    if /i "!OVERWRITE!"=="n" (
+        echo.
+        echo Creating new .env file from template...
+        copy .env.example .env >nul
+        echo.
+        echo IMPORTANT: Edit .env file with your credentials:
+        echo   - ANTHROPIC_API_KEY (required)
+        echo   - COOKNJOY_EMAIL and COOKNJOY_PASSWORD (required)
+        echo   - NYTIMES_EMAIL and NYTIMES_PASSWORD (optional)
+        echo.
+        echo Opening .env file in Notepad...
+        timeout /t 2 >nul
+        notepad .env
+    ) else (
+        echo.
+        echo Keeping existing .env file.
+        echo If you need to update it, run: notepad .env
+    )
+) else (
     echo Creating .env configuration file...
     copy .env.example .env >nul
     echo.
