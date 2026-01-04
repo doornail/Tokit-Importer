@@ -4,7 +4,7 @@ import json
 from typing import Optional
 from anthropic import Anthropic
 
-from ..models import Recipe, OmnicookRecipe
+from ..models import Recipe, OmnicookRecipe, OmnicookIngredient, OmnicookStep, OmnicookStepParameters
 from ..config import config
 
 
@@ -62,56 +62,98 @@ Instructions:
 {f'Notes: {recipe.notes}' if recipe.notes else ''}
 """
 
-        prompt = f"""You are a culinary expert assistant helping to convert recipes for the Tokit Omnicook, a smart cooking appliance similar to Thermomix.
+        prompt = f"""You are a culinary expert assistant specialized in converting recipes for the Tokit Omnicook, a smart cooking appliance similar to Thermomix with precise control over temperature, timing, and blade speed.
 
-Your task is to convert the following recipe into a format optimized for the Tokit Omnicook. The Omnicook can:
-- Precisely control temperature and timing
-- Mix, blend, chop, and steam ingredients
-- Follow automated cooking programs
-- Handle multi-step cooking processes
-
-Please convert the recipe with these guidelines:
-
-1. **Ingredients**:
-   - List ingredients clearly with specific measurements
-   - Convert to metric where appropriate
-   - Group ingredients by when they're used if it helps clarity
-
-2. **Steps**:
-   - Break down into clear, sequential steps optimized for the Omnicook
-   - Include specific temperatures and times where appropriate
-   - Mention when to use specific Omnicook functions (mixing, heating, steaming, etc.)
-   - Keep instructions concise but complete
-
-3. **Timing**:
-   - Calculate total cooking time in minutes
-
-4. **Difficulty**:
-   - Rate as Easy, Medium, or Hard based on complexity
-
-5. **Category**:
-   - Assign appropriate category (e.g., Main Course, Dessert, Appetizer, Soup, etc.)
+TOKIT OMNICOOK CAPABILITIES:
+- Temperature control: 0-120°C with heating element on/off
+- Blade speed: 0-10 (in 0.5 increments)
+  * Speed > 0 (forward/positive): CHOPPING, BLENDING, MIXING vigorously
+  * Speed < 0 (reverse/negative): STIRRING gently without chopping
+  * Speed 0: No blade movement (heating only, resting, etc.)
+- Precise timing: Minutes and seconds
+- Can heat, mix, chop, steam, and blend all in one bowl
 
 {recipe_text}
 
-Please respond with a JSON object in this exact format:
+CONVERSION REQUIREMENTS:
+
+1. **INGREDIENTS** - Format as structured objects:
+   - "name": ingredient name (e.g., "water", "onion", "flour")
+   - "quantity": amount with unit (e.g., "200g", "2 cups", "1 tsp")
+   - Use metric measurements when possible
+   - Be specific and clear
+
+2. **STEPS** - Each step MUST have:
+   - "step_number": Sequential number (1, 2, 3...)
+   - "description": Clear instruction for what to do
+   - "parameters": Object containing ALL of these fields:
+     * "duration_minutes": Integer 0+ (how many minutes for this step)
+     * "duration_seconds": Integer 0-59 (additional seconds)
+     * "temperature_on": Boolean (true = heating element ON, false = OFF)
+     * "temperature_celsius": Integer 0-120 (target temperature, 0 if heating is off)
+     * "speed": Float 0-10 in 0.5 increments (blade speed and direction)
+       - Use positive speeds (0.5-10) for chopping, blending, mixing
+       - Use NEGATIVE speeds (-0.5 to -10) for gentle stirring without chopping
+       - Use 0 for no blade movement (pure heating, resting, etc.)
+
+SPEED GUIDELINES:
+- Stirring/mixing liquids gently: -1 to -3 (NEGATIVE = reverse)
+- Sautéing (stir while heating): -2 to -4
+- Simmering soups: -1 to -2
+- Chopping vegetables: 3 to 5
+- Blending smooth: 6 to 8
+- Grinding/pulverizing: 9 to 10
+- Just heating with no movement: 0
+
+EXAMPLE STEP:
+{{
+  "step_number": 1,
+  "description": "Sauté onions until translucent",
+  "parameters": {{
+    "duration_minutes": 5,
+    "duration_seconds": 0,
+    "temperature_on": true,
+    "temperature_celsius": 100,
+    "speed": -3.0
+  }}
+}}
+
+CRITICAL:
+- Every step MUST have ALL parameter fields
+- Speed must be in 0.5 increments (0, 0.5, 1, 1.5, 2, etc.)
+- Use NEGATIVE speed for stirring (reverse blade)
+- Use POSITIVE speed for chopping/blending
+- Break down manual steps into Omnicook-automated steps with specific parameters
+
+Please respond with a JSON object in this EXACT format:
 {{
   "name": "Recipe name",
   "description": "Brief description",
+  "image_url": null,
   "servings": 4,
   "ingredients": [
-    "Specific measurement and ingredient",
-    "..."
+    {{"name": "ingredient name", "quantity": "amount with unit"}},
+    ...
   ],
   "steps": [
-    "Step 1 with specific instructions for Omnicook",
-    "Step 2...",
-    "..."
+    {{
+      "step_number": 1,
+      "description": "Step instruction",
+      "parameters": {{
+        "duration_minutes": 0,
+        "duration_seconds": 30,
+        "temperature_on": false,
+        "temperature_celsius": 0,
+        "speed": 5.0
+      }}
+    }},
+    ...
   ],
   "total_time_minutes": 45,
   "difficulty": "Medium",
   "category": "Main Course",
-  "notes": "Any additional tips or notes"
+  "source": "{recipe.source_url if recipe.source_url else null}",
+  "notes": "Any additional tips"
 }}
 
 Respond ONLY with the JSON object, no additional text."""
@@ -155,17 +197,49 @@ Respond ONLY with the JSON object, no additional text."""
                 # If no JSON found, try parsing the whole response
                 data = json.loads(response_text)
 
+            # Parse ingredients
+            ingredients = []
+            for ing_data in data.get('ingredients', []):
+                if isinstance(ing_data, dict):
+                    ingredients.append(OmnicookIngredient(**ing_data))
+                else:
+                    # Fallback for old format
+                    ingredients.append(OmnicookIngredient(name=str(ing_data), quantity="as needed"))
+
+            # Parse steps
+            steps = []
+            for step_data in data.get('steps', []):
+                if isinstance(step_data, dict) and 'parameters' in step_data:
+                    # Ensure parameters is a dict
+                    params_data = step_data['parameters']
+                    parameters = OmnicookStepParameters(**params_data)
+
+                    step = OmnicookStep(
+                        step_number=step_data.get('step_number', len(steps) + 1),
+                        description=step_data.get('description', ''),
+                        parameters=parameters
+                    )
+                    steps.append(step)
+                else:
+                    # Fallback for old format or missing parameters
+                    steps.append(OmnicookStep(
+                        step_number=len(steps) + 1,
+                        description=str(step_data) if isinstance(step_data, str) else step_data.get('description', ''),
+                        parameters=OmnicookStepParameters()  # Default parameters
+                    ))
+
             # Create OmnicookRecipe from parsed data
             return OmnicookRecipe(
                 name=data.get('name', original_recipe.title),
                 description=data.get('description'),
+                image_url=data.get('image_url'),
                 servings=self._parse_servings(data.get('servings', 4)),
-                ingredients=data.get('ingredients', []),
-                steps=data.get('steps', []),
+                ingredients=ingredients,
+                steps=steps,
                 total_time_minutes=data.get('total_time_minutes'),
                 difficulty=data.get('difficulty', 'Medium'),
                 category=data.get('category'),
-                source=original_recipe.source_url,
+                source=data.get('source') or original_recipe.source_url,
                 notes=data.get('notes')
             )
 
@@ -192,14 +266,26 @@ Respond ONLY with the JSON object, no additional text."""
 
     def _fallback_conversion(self, recipe: Recipe) -> OmnicookRecipe:
         """Create a basic conversion if Claude fails."""
+        import re
+
         # Simple conversion without AI enhancement
-        ingredients = [str(ing) for ing in recipe.ingredients]
-        steps = [step.instruction for step in recipe.steps]
+        ingredients = [
+            OmnicookIngredient(name=str(ing.item), quantity=f"{ing.quantity or ''} {ing.unit or ''}".strip() or "as needed")
+            for ing in recipe.ingredients
+        ]
+
+        steps = [
+            OmnicookStep(
+                step_number=idx,
+                description=step.instruction,
+                parameters=OmnicookStepParameters()  # Default empty parameters
+            )
+            for idx, step in enumerate(recipe.steps, 1)
+        ]
 
         # Try to parse servings
         servings = 4
         if recipe.servings:
-            import re
             match = re.search(r'\d+', str(recipe.servings))
             if match:
                 servings = int(match.group())
@@ -207,7 +293,6 @@ Respond ONLY with the JSON object, no additional text."""
         # Estimate total time
         total_time_minutes = None
         if recipe.total_time:
-            import re
             hours = re.search(r'(\d+)\s*hour', recipe.total_time)
             minutes = re.search(r'(\d+)\s*minute', recipe.total_time)
 

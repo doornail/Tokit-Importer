@@ -299,13 +299,47 @@ def _display_recipe(recipe: OmnicookRecipe):
     if recipe.ingredients:
         console.print("\n[bold yellow]Ingredients:[/bold yellow]")
         for ing in recipe.ingredients:
-            console.print(f"  • {ing}")
+            # Handle both old string format and new OmnicookIngredient objects
+            if hasattr(ing, 'name'):
+                console.print(f"  • {ing.quantity} {ing.name}")
+            else:
+                console.print(f"  • {ing}")
 
-    # Steps
+    # Steps with detailed parameters
     if recipe.steps:
-        console.print("\n[bold yellow]Instructions:[/bold yellow]")
-        for idx, step in enumerate(recipe.steps, 1):
-            console.print(f"  [bold]{idx}.[/bold] {step}")
+        console.print("\n[bold yellow]Tokit Omnicook Steps:[/bold yellow]")
+        for step in recipe.steps:
+            # Handle both old string format and new OmnicookStep objects
+            if hasattr(step, 'parameters'):
+                params = step.parameters
+                console.print(f"\n  [bold cyan]Step {step.step_number}:[/bold cyan] {step.description}")
+
+                # Display parameters in a compact format
+                param_parts = []
+
+                # Time
+                if params.duration_minutes > 0 or params.duration_seconds > 0:
+                    time_str = f"{params.duration_minutes}:{params.duration_seconds:02d}"
+                    param_parts.append(f"⏱️  {time_str}")
+
+                # Temperature
+                if params.temperature_on:
+                    param_parts.append(f"🌡️  {params.temperature_celsius}°C")
+                else:
+                    param_parts.append("🌡️  OFF")
+
+                # Speed
+                if params.speed > 0:
+                    param_parts.append(f"🔄 {params.speed} (chop/blend)")
+                elif params.speed < 0:
+                    param_parts.append(f"🔄 {abs(params.speed)} reverse (stir)")
+                else:
+                    param_parts.append("🔄 0 (no mixing)")
+
+                console.print(f"     [dim]{' | '.join(param_parts)}[/dim]")
+            else:
+                # Old format fallback
+                console.print(f"  [bold]{step.step_number if hasattr(step, 'step_number') else '?'}.[/bold] {step}")
 
     # Notes
     if recipe.notes:
